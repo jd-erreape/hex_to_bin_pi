@@ -1,15 +1,18 @@
 var gpio = require('rpi-gpio');
+var hex2Bool = require('./hex_to_bin');
 
 // Set GPIO pin numbers mode
 gpio.setMode(gpio.MODE_BCM);
 
 // GPIO Pins we're gonna use
-const pinNumbers = [15, 18, 24, 23];
+// they are in the same order as a binary
+const pinNumbers = [23, 24, 15, 18];
+const boolRepresentation = hex2Bool('D');
 
 // Will enable a LED and disable it after 2 seconds
-const perform = () => {
-  pinNumbers.forEach((pinNumber) => {
-    gpio.write(pinNumber, true, function(err) {
+const writeDigit = () => {
+  pinNumbers.forEach((pinNumber, index) => {
+    gpio.write(pinNumber, boolRepresentation[index], function(err) {
       if (err) throw err;
       console.log('Written to pin');
     });
@@ -28,8 +31,9 @@ const perform = () => {
 // We're resolving a promise when the setup has been completed and
 // waiting for all the pins to be setup before executing our program logic
 //
+
 Promise.all(pinNumbers.map((pinNumber) => {
   return new Promise((resolve) => {
     gpio.setup(pinNumber, gpio.DIR_OUT, resolve);
   })
-})).then(perform);
+})).then(writeDigit);
