@@ -2,6 +2,10 @@ const Rx = require('rxjs/Rx');
 const R = require('ramda');
 const gpio = require('rpi-gpio');
 
+const pinNumbers = require('./pin_numbers');
+
+const message = process.argv.slice(2)[0];
+
 // -------- Pad a string with 0 for length 8
 const pad = R.curry((n, string) => (Array(n).join('0') + string).slice(-n));
 const pad8 = pad(8);
@@ -33,62 +37,21 @@ const stringToBinArray = R.compose(
 // each 4 elements of the stream and will return the buffered packages every
 // n milliseconds
 
-const message = 'ABCDE';
-const stream = Rx.Observable
-  .from(stringToBinArray(message))
-  .bufferCount(8)
-  .zip(
-    Rx.Observable.interval(500),
-    package => package
-  );
-
-stream.subscribe(console.log);
-
-// GPIO Pins we're gonna use
-// they are in the same order as a binary
-
-// const PIN_7 = 14;
-// const PIN_6 = 15;
-// const PIN_5 = 18;
-// const PIN_4 = 23;
-// const PIN_3 = 24;
-// const PIN_2 = 25;
-// const PIN_1 = 8;
-// const PIN_0 = 7;
-//
-// const pinNumbers = [
-//   PIN_7,
-//   PIN_6,
-//   PIN_5,
-//   PIN_4,
-//   PIN_3,
-//   PIN_2,
-//   PIN_1,
-//   PIN_0
-// ];
-
 // Set GPIO pin numbers mode
 gpio.setMode(gpio.MODE_BCM);
 
-// GPIO Pins we're gonna use
-// they are in the same order as a binary
-const pinNumbers = [23, 24, 15, 18];
-const boolRepresentation = [true, false, true, false];
-
 // Will enable a LED and disable it after 2 seconds
-const writeDigit = () => {
+const writeDigit = (boolArray) => {
   pinNumbers.forEach((pinNumber, index) => {
-    gpio.write(pinNumber, boolRepresentation[index], function(err) {
+    gpio.write(pinNumber, boolArray[index], function(err) {
       if (err) throw err;
-      console.log('Written to pin');
     });
 
     setTimeout(() => {
       gpio.write(pinNumber, false, function(err) {
         if (err) throw err;
-        console.log('Written to pin');
       });
-    }, 2000);
+    }, 1500);
   })
 };
 
@@ -102,4 +65,14 @@ Promise.all(pinNumbers.map((pinNumber) => {
   return new Promise((resolve) => {
     gpio.setup(pinNumber, gpio.DIR_OUT, resolve);
   })
-})).then(writeDigit);
+})).then(() => {
+  const stream = Rx.Observable
+    .from(stringToBinArray(message))
+    .bufferCount(8)
+    .zip(
+      Rx.Observable.interval(4000),
+      package => package
+    );
+
+  stream.subscribe(writeDigit);
+});
